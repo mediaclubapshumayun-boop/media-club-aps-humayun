@@ -112,7 +112,7 @@
       // Accept explicit key if present
       if(v.key){
         const raw = v.key.toString().toUpperCase();
-        if(raw.includes('PRESIDENT') && !raw.includes('VICE')) return 'GLOBAL:PRESIDENT';
+        if(raw.includes('PRESIDENT') && !raw.includes('VICE')) return 'PRESIDENT';
         if(raw.includes(':')){
           const [c,r] = raw.split(':');
           return `${normalizeClub(c)}:${normalizeRoleWord(r)}`;
@@ -120,13 +120,13 @@
       }
       const role = normalizeRoleWord(v.role||v.position||'');
       const club = normalizeClub(v.club||'');
-      if(role==='PRESIDENT') return 'GLOBAL:PRESIDENT';
+      if(role==='PRESIDENT') return 'PRESIDENT';
       if((role==='VICEPRESIDENT'||role==='SECRETARY') && club) return `${club}:${role}`;
-      return 'GLOBAL:PRESIDENT';
+      return 'PRESIDENT';
     }
 
     function roleTitle(roleKey){
-      if(roleKey==='GLOBAL:PRESIDENT') return 'Global — President';
+      if(roleKey==='PRESIDENT') return 'President';
       const [c,r]=roleKey.split(':');
       return `${prettyClub[c]||c} — ${prettyRole[r]||r}`;
     }
@@ -235,7 +235,7 @@
     function refresh(){
       const tallies = readRoleTallies();
       const keys = [...tallies.keys()].sort((a,b)=>{ // Global President first
-        if(a==='GLOBAL:PRESIDENT') return -1; if(b==='GLOBAL:PRESIDENT') return 1;
+        if(a==='PRESIDENT') return -1; if(b==='PRESIDENT') return 1;
         const [ac,ar]=a.split(':'),[bc,br]=b.split(':');
         const ro=(r)=> r==='VICEPRESIDENT'?0: (r==='SECRETARY'?1:2);
         return ac===bc? ro(ar)-ro(br) : ac.localeCompare(bc);
