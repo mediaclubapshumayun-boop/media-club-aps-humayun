@@ -1,169 +1,113 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<title>Election Results</title>
-
-<!-- Chart.js (already used by you) -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-<!-- ExcelJS (ONLY new thing added) -->
-<script src="https://cdn.jsdelivr.net/npm/exceljs/dist/exceljs.min.js"></script>
-
-<style>
-body{
-  font-family: Arial, sans-serif;
-  background:#f4f6f8;
-  padding:20px;
-}
-h1{
-  text-align:center;
-}
-.section{
-  background:#fff;
-  padding:15px;
-  margin-bottom:20px;
-  border-radius:8px;
-}
-canvas{
-  max-width:500px;
-}
-button{
-  padding:10px 16px;
-  font-size:16px;
-  cursor:pointer;
-}
-</style>
-</head>
-
-<body>
-
-<h1>📊 Election Results</h1>
-
-<div style="text-align:center;margin-bottom:20px">
-  <button onclick="exportExcel()">⬇ Download Excel</button>
-</div>
-
-<div id="results"></div>
-
 <script>
-/* ===============================
-   ADMIN PROTECTION (UNCHANGED)
-================================ */
-const ADMIN_PASSWORD = 'admin123';
-
-if(!sessionStorage.getItem('admin')){
-  const p = prompt('Enter admin password');
-  if(p !== ADMIN_PASSWORD){
-    alert('Access denied');
-    location.href = 'index.html';
-  }
-  sessionStorage.setItem('admin','true');
-}
-
-/* ===============================
-   LOAD VOTES (UNCHANGED)
-================================ */
-const logs = JSON.parse(localStorage.getItem('mc_votes_log') || '[]');
-const container = document.getElementById('results');
-
-if(!logs.length){
-  container.innerHTML = '<p>No votes found.</p>';
-}
-
-/* ===============================
-   GROUP VOTES (UNCHANGED)
-================================ */
-const grouped = {};
-logs.forEach(v=>{
-  const key = `${v.role} (${v.club || 'GLOBAL'})`;
-  grouped[key] = grouped[key] || {};
-  grouped[key][v.candidate] = (grouped[key][v.candidate] || 0) + 1;
-});
-
-/* ===============================
-   DISPLAY CHARTS (UNCHANGED)
-================================ */
-Object.keys(grouped).forEach(role=>{
-  const sec = document.createElement('div');
-  sec.className = 'section';
-  sec.innerHTML = `<h3>${role}</h3><canvas></canvas>`;
-  container.appendChild(sec);
-
-  new Chart(sec.querySelector('canvas'),{
-    type:'bar',
-    data:{
-      labels:Object.keys(grouped[role]),
-      datasets:[{
-        data:Object.values(grouped[role])
-      }]
-    },
-    options:{
-      responsive:true,
-      plugins:{ legend:{ display:false } }
-    }
-  });
-});
-
-/* ===============================
-   EXCEL EXPORT (NEW FEATURE)
-================================ */
 async function exportExcel(){
-  if(!logs.length){
-    alert('No votes found');
-    return;
-  }
+  const tallies = readRoleTallies();
+  const ballots = safeJSON(localStorage.getItem('mc_votes_log')) || [];
+  const keys = [...tallies.keys()];
 
   const wb = new ExcelJS.Workbook();
-  wb.creator = 'Election System';
+  wb.creator = 'Media Club Elections';
+  wb.created = new Date();
 
-  for(const role in grouped){
-    const ws = wb.addWorksheet(role.substring(0,31));
-
-    // Table
-    ws.addRow(['Candidate','Votes']);
-    Object.entries(grouped[role]).forEach(([name,count])=>{
-      ws.addRow([name,count]);
-    });
+  /***********************
+   * ROLE RESULT SHEETS
+   ***********************/
+  for(const rk of keys){
+    const ws = wb.addWorksheet(roleTitle(rk).slice(0,31));
+    const rows = [...tallies.get(rk).entries()].sort((a,b)=>b[1]-a[1]);
+    const total = rows.reduce((s,[,c])=>s+c,0);
 
     ws.columns = [
-      { width: 30 },
-      { width: 10 }
+      { header:'Rank', key:'rank', width:8 },
+      { header:'Candidate', key:'cand', width:28 },
+      { header:'Votes', key:'cnt', width:12 },
+      { header:'% Share', key:'pct', width:12 }
     ];
 
-    // Create chart image
-    const canvas = document.createElement('canvas');
-    new Chart(canvas.getContext('2d'),{
-      type:'bar',
-      data:{
-        labels:Object.keys(grouped[role]),
-        datasets:[{ data:Object.values(grouped[role]) }]
-      }
+    rows.forEach(([cand,cnt],i)=>{
+      ws.addRow({
+        rank: i+1,
+        cand,
+        cnt,
+        pct: total ? cnt/total : 0
+      });
     });
 
-    const img = wb.addImage({
-      base64: canvas.toDataURL(),
-      extension: 'png'
-    });
+    ws.getRow(1).font = { bold:true };
+    ws.getColumn(4).numFmt = '0.0%';
 
-    ws.addImage(img,{
-      tl:{ col:4, row:1 },
-      ext:{ width:450, height:300 }
-    });
+    ws.addRow([]);
+    ws.addRow(['Role Key', rk]);
+    ws.addRow(['Total Votes', total]);
+
+    // Embed charts
+    const ch = chartsByRole.get(rk);
+    if(ch?.pie?.canvas){
+      const img = wb.addImage({
+        base64: ch.pie.canvas.toDataURL('image/png').split(',')[1],
+        extension:'png'
+      });
+      ws.addImage(img,{ tl:{ col:6, row:1 }, ext:{ width:420, height:280 } });
+    }
+    if(ch?.bar?.canvas){
+      const img2 = wb.addImage({
+        base64: ch.bar.canvas.toDataURL('image/png').split(',')[1],
+        extension:'png'
+      });
+      ws.addImage(img2,{ tl:{ col:6, row:18 }, ext:{ width:420, height:280 } });
+    }
   }
 
-  const buffer = await wb.xlsx.writeBuffer();
-  const blob = new Blob([buffer],{
-    type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+  /***********************
+   * RAW VOTES SHEET
+   ***********************/
+  const raw = wb.addWorksheet('Raw Votes');
+  raw.columns = [
+    { header:'Student Name', key:'name', width:24 },
+    { header:'Class', key:'class', width:12 },
+    { header:'Section', key:'section', width:12 },
+    { header:'House', key:'house', width:14 },
+    { header:'Club', key:'club', width:20 },
+    { header:'Role', key:'role', width:18 },
+    { header:'Candidate', key:'candidate', width:24 },
+    { header:'Time', key:'time', width:22 }
+  ];
+  raw.getRow(1).font = { bold:true };
+
+  ballots.forEach(v=>{
+    raw.addRow({
+      name: v.name || '',
+      class: v.class || '',
+      section: v.section || '',
+      house: v.house || '',
+      club: v.club || '',
+      role: v.role || v.position || '',
+      candidate: v.candidate || '',
+      time: v.time || ''
+    });
   });
 
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = 'Election_Results.xlsx';
-  a.click();
+  /***********************
+   * SUMMARY SHEET
+   ***********************/
+  const sum = wb.addWorksheet('Summary');
+  sum.addRow(['Media Club Elections – Final Export']);
+  sum.getRow(1).font = { bold:true, size:14 };
+  sum.addRow(['Exported On', new Date().toLocaleString()]);
+  sum.addRow(['Total Roles', keys.length]);
+  sum.addRow(['Total Votes', ballots.length]);
+
+  /***********************
+   * FORCE DOWNLOAD
+   ***********************/
+  const buffer = await wb.xlsx.writeBuffer();
+  const blob = new Blob(
+    [buffer],
+    { type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }
+  );
+
+  saveAs(
+    blob,
+    `MediaClub_Election_Results_${new Date().toISOString().slice(0,10)}.xlsx`
+  );
 }
 </script>
-
-</body>
-</html>
-
