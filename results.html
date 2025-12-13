@@ -44,7 +44,7 @@ function readVotes(){
   const log = JSON.parse(localStorage.getItem("mc_votes_log")||"[]");
   const map = {};
   log.forEach(v=>{
-    const key = `${v.club||"GLOBAL"}:${v.role||"PRESIDENT"}`;
+    const key = `${v.club||""}:${v.role||"PRESIDENT"}`;
     map[key] = map[key] || {};
     map[key][v.candidate] = (map[key][v.candidate]||0)+1;
   });
