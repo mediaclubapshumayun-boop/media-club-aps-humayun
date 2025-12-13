@@ -1,0 +1,313 @@
+
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Media Club Elections — Cast Your Vote</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --panel: rgba(255,255,255,0.92);
+      --ink:#0f172a;
+      --muted:#64748b;
+      --line:#e5e7eb;
+      --brand:#4f46e5;
+      --brand-500:#6366f1;
+      --blue:#dbeafe;
+      --green:#dcfce7;
+      --yellow:#fef9c3;
+      --shadow:0 18px 50px -26px rgba(2,6,23,.35);
+      --radius:16px;
+    }
+
+    *{box-sizing:border-box}
+    html,body{
+      margin:0;padding:0;
+      font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Noto Sans",sans-serif;
+      color:var(--ink);
+      background-image: url('https://www.siegfriedrivera.com/wp-content/uploads/2023/11/shutterstock_1845670267.jpg');
+      background-size: cover;
+      background-position: center;
+      background-attachment: fixed;
+      min-height: 100vh;
+      position: relative;
+    }
+
+    .overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.45);
+      backdrop-filter: blur(2px);
+      z-index: -1;
+    }
+
+    .container{max-width:1160px;margin:0 auto;padding:16px}
+
+    .hero{text-align:center;padding:24px 0 6px;color:#fff}
+    .chip{display:inline-flex;gap:8px;align-items:center;border:1px solid #c7d2fe;background:rgba(238,242,255,0.85);color:#3730a3;border-radius:999px;padding:6px 12px;font-weight:700;font-size:13px;backdrop-filter:blur(4px)}
+    h1{font-size:clamp(24px,4vw,34px);font-weight:800;margin:10px 0;color:#fff}
+    .lead{max-width:840px;margin:6px auto 0;color:#e2e8f0;font-size:15px}
+
+    .section{
+      background: var(--panel);
+      border:1px solid var(--line);
+      border-radius:var(--radius);
+      box-shadow:var(--shadow);
+      padding:14px;
+      margin-top:14px;
+      backdrop-filter: blur(6px);
+    }
+    .headerRow{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+    .tag{font-weight:800;font-size:14px;border-radius:999px;padding:6px 10px;border:1px solid var(--line)}
+    .tag.blue{background:var(--blue)}
+    .tag.green{background:var(--green)}
+    .tag.yellow{background:var(--yellow)}
+
+    .cards{display:grid;gap:12px}
+    @media(min-width:560px){.cards{grid-template-columns:repeat(2,1fr)}}
+    @media(min-width:900px){.cards{grid-template-columns:repeat(3,1fr)}}
+
+    .card{
+      border:1px solid var(--line);
+      border-radius:14px;
+      background:rgba(255,255,255,0.95);
+      padding:12px;
+      min-height:140px;
+      transition:.2s;
+      backdrop-filter: blur(4px);
+    }
+    .card:hover{box-shadow:0 12px 30px -16px rgba(2,6,23,.3)}
+    .selected{border-color:#86efac;background:#ecfdf5}
+
+    .row{display:flex;gap:12px;align-items:center}
+    .avatar{width:56px;height:56px;border-radius:12px;border:1px solid #e5e7eb;background:#eef2ff;display:grid;place-items:center;overflow:hidden}
+    .avatar img{width:100%;height:100%;object-fit:cover;display:block}
+    .name{font-weight:800;font-size:15px;display:flex;align-items:center;gap:6px}
+    .role-small{font-size:12px;color:#64748b}
+    .badge{background:#ecfdf5;color:#065f46;border:1px solid #86efac;border-radius:10px;padding:2px 6px;font-size:11px;font-weight:700}
+
+    .btn{border-radius:12px;padding:10px 16px;font-weight:700;font-size:14px;cursor:pointer;border:1px solid transparent;transition:.2s}
+    .btn.primary{background:var(--brand);color:#fff}
+    .btn.primary:hover{background:var(--brand-500)}
+    .btn.ghost{background:#fff;border:1px solid var(--line);color:#111827}
+    .btn:disabled{opacity:.6;cursor:not-allowed}
+
+    .topbar{display:flex;gap:8px;justify-content:space-between;align-items:center;margin-top:10px;color:#e2e8f0}
+    .crumb{font-size:13px;color:#e2e8f0}
+    .link{font-weight:700;color:#fff;text-decoration:none;border-bottom:1px dashed rgba(255,255,255,0.6)}
+    .link:hover{color:#c7d2fe}
+
+    footer{border-top:1px solid rgba(255,255,255,0.3);padding:16px 0;margin-top:20px;text-align:center;color:#e2e8f0;font-size:14px}
+    .toast{position:fixed;top:12px;right:12px;background:#fff;border:1px solid var(--line);border-left:6px solid var(--brand);border-radius:12px;padding:10px 12px;box-shadow:0 12px 22px -16px rgba(2,6,23,.35);font-weight:600;z-index:9999}
+  </style>
+</head>
+<body>
+  <div class="overlay"></div>
+
+  <div class="container">
+    <header class="hero">
+      <div class="chip">🎬 Media Club Elections • <span id="year"></span></div>
+      <h1>Cast Your Vote</h1>
+      <p class="lead">Votes are <strong>anonymous</strong>. You will vote once for <strong>Media Club President</strong>, then for your club’s <strong>Vice President</strong> and <strong>Secretary</strong>.</p>
+      <div class="topbar">
+        <div class="crumb">🔐 Registered as: <span id="who"></span></div>
+        <div>
+          <a class="link" href="./index.html">← Edit Registration</a>
+          &nbsp;&nbsp;|&nbsp;&nbsp;
+          <a class="link" href="./results.html">Admin Results →</a>
+        </div>
+      </div>
+    </header>
+
+    <section id="globalSec" class="section">
+      <div class="headerRow">
+        <div class="tag blue">🟦 Media Club — President</div>
+        <div id="globalStatus" class="role-small"></div>
+      </div>
+      <div id="globalCards" class="cards"></div>
+    </section>
+
+    <section id="clubSec" class="section" style="display:none;">
+      <div class="headerRow">
+        <div class="tag green" id="vpTag"></div>
+        <div id="vpStatus" class="role-small"></div>
+      </div>
+      <div id="vpCards" class="cards"></div>
+
+      <div class="headerRow" style="margin-top:16px">
+        <div class="tag yellow" id="secTag"></div>
+        <div id="secStatus" class="role-small"></div>
+      </div>
+      <div id="secCards" class="cards"></div>
+    </section>
+
+    <footer>Made by Malaika Jannat - Media Club (Senior Wing)</footer>
+  </div>
+
+<script>
+const K = { student:'mc_student', votesMap:'mc_votes', votesLog:'mc_votes_log' };
+
+// ✅ Updated candidate images
+const CANDIDATE_PHOTOS = {
+  "Ammar Javed": "https://www.shutterstock.com/image-photo/happy-african-american-schoolgirl-uniform-600nw-2402155303.jpg",
+  "Eesha Rehman": "https://media.istockphoto.com/id/1345021854/photo/smiling-active-excellent-best-student-schoolgirl-holding-books-and-copybooks-going-to-school.jpg?s=612x612&w=0&k=20&c=nVrUojM36UgS9VhpWWhtdXifXTb90faM9MLyRKIuNMo=",
+  "Sara Imran": "https://img.freepik.com/free-photo/pretty-schoolgirl-with-books_23-2147659256.jpg?semt=ais_hybrid&w=740&q=80",
+  "Fatima Raza": "https://img.freepik.com/free-photo/young-attractive-teenage-girl-holding-book_171337-6917.jpg?semt=ais_hybrid&w=740&q=80",
+
+  "Hiba Farooq": "https://img.freepik.com/free-photo/portrait-cute-young-brunette-student-holding-exercise-books-isolated-white-wall_231208-11488.jpg",
+  "Umama Zafar": "https://t3.ftcdn.net/jpg/03/39/60/22/360_F_339602256_dBq6bYfHWzlnRQkXgAMFXZfx2r1DPQns.jpg",
+  "Kinza Khan": "https://www.shutterstock.com/image-photo/image-happy-beautiful-student-girl-600nw-1824708863.jpg",
+  "Hoorain Fatima": "https://www.shutterstock.com/image-photo/photo-diligent-intelligent-girl-ginger-600nw-2465358469.jpg",
+  "Fiza Tariq": "https://www.shutterstock.com/image-photo/young-smart-asian-student-girl-260nw-1772033321.jpg",
+  "Noor Fatima": "https://img.freepik.com/premium-photo/teenage-school-girl-with-books-schoolgirl-student-happy-girl-face-positive-smiling-emotions_545934-24411.jpg",
+  "Fatima Ali": "https://img.freepik.com/premium-photo/young-student-girl-with-books-yellow-background-back-school_432566-5685.jpg",
+  "Areeba Sheikh": "https://img.freepik.com/premium-photo/smiling-woman-student-with-school-books-hands-yellow-background_432566-6049.jpg",
+  "Ayesha Malik": "https://img.freepik.com/free-photo/front-view-female-doctor-medical-shirt-holding-different-notes-color-virus-health-emotions-covid-19-pandemic-uniform_179666-23874.jpg?semt=ais_incoming&w=740&q=80",
+  "Hania Khan": "https://img.freepik.com/free-photo/young-woman-holding-clipboard-pen-t-shirt-shorts-looking-cheerful_176474-12352.jpg?semt=ais_hybrid&w=740&q=80",
+  "Sara Yousuf": "https://t4.ftcdn.net/jpg/06/77/30/71/360_F_677307123_bVNJqZD8AGDjPolT5riGQd1uYHh2XVXY.jpg",
+  "Aqsa Irfan": "https://media.istockphoto.com/id/1222372717/photo/indian-young-girl-stock-images.jpg?s=612x612&w=0&k=20&c=OYtnDHPUcBMzT_CYBKETl1_f5DFOCHfXo3hY0R9pinM=",
+  "Rameen Qazi": "https://img.freepik.com/free-photo/portrait-school-girl-with-book-city_23-2148199220.jpg",
+  "Huda Siddiqui": "https://as2.ftcdn.net/jpg/01/48/13/13/1000_F_148131389_S2fVD4AYZannzQVZPi4RGh3xLKfvyucG.jpg"
+};
+
+const GLOBAL_PRESIDENT = ["Hiba Farooq","Umama Zafar"];
+const CLUBS = {
+  "Gamification": { roles: {
+    "Vice President":["Kinza Khan","Hoorain Fatima"],
+    "Secretary":["Ammar Javed","Eesha Rehman"]
+  }},
+  "Audio/Visual": { roles: {
+    "Vice President":["Fiza Tariq","Noor Fatima"],
+    "Secretary":["Sara Yousuf","Aqsa Irfan"]
+  }},
+  "Photography": { roles: {
+    "Vice President":["Fatima Ali","Areeba Sheikh"],
+    "Secretary":["Rameen Qazi","Huda Siddiqui"]
+  }},
+  "Digital Literacy": { roles: {
+    "Vice President":["Ayesha Malik","Hania Khan"],
+    "Secretary":["Sara Imran","Fatima Raza"]
+  }}
+};
+
+const $ = q => document.querySelector(q);
+const now = ()=> Date.now();
+const getJSON = (k,f=null)=>{ try{const v=localStorage.getItem(k); return v?JSON.parse(v):f;}catch{return f;} };
+const setJSON = (k,v)=> localStorage.setItem(k, JSON.stringify(v));
+
+function flash(msg){
+  let toast=document.querySelector('.toast');
+  if(!toast){ toast=document.createElement('div'); toast.className='toast'; document.body.appendChild(toast); }
+  toast.textContent=msg; toast.style.display='block';
+  clearTimeout(flash._t); flash._t=setTimeout(()=>toast.style.display='none',2200);
+}
+
+function getCandidateImage(name){
+  if (CANDIDATE_PHOTOS[name]) return CANDIDATE_PHOTOS[name];
+  const seed=encodeURIComponent(name);
+  return `https://api.dicebear.com/7.x/micah/svg?seed=${seed}&backgroundType=gradientLinear&size=120`;
+}
+
+function getVotesMap(){ return getJSON(K.votesMap, {}); }
+function setVotesMap(m){ setJSON(K.votesMap, m); }
+function getLog(){ return getJSON(K.votesLog, []); }
+function appendLog(entry){ const log=getLog(); log.push(entry); setJSON(K.votesLog, log); }
+
+function ensureRegistered(){
+  const stu=getJSON(K.student,null);
+  if(!stu || !stu.club){ location.href='./index.html'; return null; }
+  $('#who').textContent = `${stu.name} (Class ${stu.class}-${stu.section}, ${stu.club})`;
+  return stu;
+}
+
+function castVote(key, role, candidate, club){
+  const map=getVotesMap();
+  if(map[key]){
+    flash(`Vote changed from ${map[key]} to ${candidate}`);
+  } else {
+    flash('Vote recorded ✅');
+  }
+  map[key] = String(candidate);
+  setVotesMap(map);
+  appendLog({ key, role, candidate, club, at: now() });
+  renderAll();
+}
+
+function renderCard(role, candidate, key, votedFor, onVote){
+  const card=document.createElement('div');
+  const isMine=votedFor===candidate;
+  card.className='card'+(isMine?' selected':'');
+  const badge=isMine?`<span class="badge">Voted</span>`:'';
+  card.innerHTML=`
+    <div class="row" style="justify-content:space-between">
+      <div class="row">
+        <div class="avatar"><img src="${getCandidateImage(candidate)}" alt="${candidate}"></div>
+        <div>
+          <div class="name">${candidate} ${badge}</div>
+          <div class="role-small">${role}</div>
+        </div>
+      </div>
+    </div>
+  `;
+  const btn=document.createElement('button');
+  btn.className='btn '+(isMine?'ghost':'primary');
+  btn.textContent = isMine ? 'Your Vote' : (votedFor ? 'Change Vote' : 'Vote');
+  btn.onclick = ()=> onVote(candidate);
+  card.appendChild(btn);
+  return card;
+}
+
+function renderGlobal(){
+  const holder = $('#globalCards'); holder.innerHTML='';
+  const map=getVotesMap();
+  const key = 'GLOBAL|President';
+  const votedFor = map[key] || null;
+  GLOBAL_PRESIDENT.forEach(cand=>{
+    holder.appendChild(renderCard('President', cand, key, votedFor, (ch)=>castVote(key,'President',ch,null)));
+  });
+  $('#globalStatus').textContent = votedFor ? `You voted: ${votedFor}` : 'No vote yet';
+}
+
+function renderClub(){
+  const stu=getJSON(K.student,null);
+  const club=stu?.club; const cfg=CLUBS[club];
+  if(!cfg){ $('#clubSec').style.display='none'; return; }
+  $('#clubSec').style.display='block';
+
+  // Vice President
+  const vpKey=`${club}|Vice President`;
+  const vpVoted=getVotesMap()[vpKey]||null;
+  $('#vpTag').textContent=`${club} — Vice President`;
+  const vpWrap=$('#vpCards'); vpWrap.innerHTML='';
+  cfg.roles['Vice President'].forEach(c=>{
+    vpWrap.appendChild(renderCard('Vice President', c, vpKey, vpVoted, (ch)=>castVote(vpKey,'Vice President',ch,club)));
+  });
+  $('#vpStatus').textContent = vpVoted ? `You voted: ${vpVoted}` : 'No vote yet';
+
+  // Secretary
+  const secKey=`${club}|Secretary`;
+  const secVoted=getVotesMap()[secKey]||null;
+  $('#secTag').textContent=`${club} — Secretary`;
+  const secWrap=$('#secCards'); secWrap.innerHTML='';
+  cfg.roles['Secretary'].forEach(c=>{
+    secWrap.appendChild(renderCard('Secretary', c, secKey, secVoted, (ch)=>castVote(secKey,'Secretary',ch,club)));
+  });
+  $('#secStatus').textContent = secVoted ? `You voted: ${secVoted}` : 'No vote yet';
+}
+
+function renderAll(){
+  renderGlobal();
+  renderClub();
+}
+
+$('#year').textContent=new Date().getFullYear();
+const reg = ensureRegistered(); if(reg){ renderAll(); }
+</script>
+</body>
+</html>
