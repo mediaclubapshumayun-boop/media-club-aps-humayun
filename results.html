@@ -1,129 +1,314 @@
+
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8" />
-<title>Media Club Election Results — Admin</title>
-<meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta charset="utf-8" />
+  <title>Media Club Election Results — Admin</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet" />
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.6/dist/chart.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.6/dist/chart.umd.min.js"></script>
+  <!-- ExcelJS + FileSaver -->
+  <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
 
-<style>
-body{margin:0;background:#0b1220;color:#e2e8f0;font-family:Inter}
-button{padding:10px 14px;border-radius:10px;border:none;font-weight:700;cursor:pointer}
-.brand{background:#4f46e5;color:white}
-.danger{background:#b91c1c;color:white}
-.container{max-width:1200px;margin:auto;padding:20px}
-.card{background:white;color:#0f172a;border-radius:16px;padding:16px;margin-top:16px}
-table{width:100%;border-collapse:collapse}
-th,td{padding:8px;border-bottom:1px solid #ddd}
-th{background:#f8fafc}
-.winner{background:#dcfce7;color:#065f46;padding:2px 8px;border-radius:999px;font-size:11px;margin-left:6px}
-</style>
+  <style>
+    :root{
+      --bg: #0b1220; --panel: rgba(255,255,255,0.97); --ink:#0f172a; --muted:#64748b; --line:#e5e7eb; --brand:#4f46e5; --brand-500:#6366f1; --radius:16px; --shadow:0 18px 50px -26px rgba(2,6,23,.35);
+    }
+    *{box-sizing:border-box}
+    html,body{ margin:0;padding:0; font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Noto Sans",sans-serif; background: radial-gradient(1200px 600px at 10% -10%, #1e293b 0%, var(--bg) 60%); min-height:100vh; color:#e2e8f0 }
+    .container{max-width:1220px;margin:0 auto;padding:18px 16px 64px}
+    h1{font-size:clamp(24px,4vw,34px);font-weight:800;margin:10px 0 4px;display:flex;align-items:center;gap:10px}
+    .subtitle{color:#cbd5e1;margin-bottom:18px}
+    .topbar{display:flex;flex-wrap:wrap;gap:12px;justify-content:space-between;align-items:center;margin:8px 0 16px}
+    .controls{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+    button{border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:#fff;color:var(--ink);font-weight:700;cursor:pointer}
+    button.brand{background:var(--brand);color:#fff;border-color:var(--brand-500);box-shadow:0 8px 22px -12px rgba(79,70,229,.45)}
+    button.danger{background:#b91c1c;color:#fff;border-color:#b91c1c}
+
+    .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);color:var(--ink)}
+    .panel{padding:14px}
+    .role-block{margin-top:18px}
+    .role-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+    .role-title{font-size:18px;font-weight:800;color:#fff}
+
+    .role-grid{display:grid;grid-template-columns:1.25fr 1fr;gap:16px}
+    @media (max-width: 1024px){ .role-grid{grid-template-columns:1fr} }
+
+    .tableWrap{margin-top:8px;overflow:auto;border-radius:12px;border:1px solid var(--line)}
+    table{width:100%;border-collapse:collapse;background:#fff}
+    thead{background:#f8fafc}
+    th,td{padding:10px 12px;text-align:left;font-size:14px;border-bottom:1px solid #e5e7eb}
+    th{font-weight:700;white-space:nowrap}
+    tr:hover td{background:#fafafa}
+    .winner{background:#ecfdf5;color:#065f46;border:1px solid #a7f3d0;border-radius:999px;padding:2px 8px;font-size:11px;font-weight:800;margin-left:8px}
+
+    .charts{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    @media (max-width: 960px){ .charts{grid-template-columns:1fr} }
+    .charts .panel h3{margin:0 0 6px 0;font-size:15px}
+    .charts canvas{width:100%;height:320px;max-height:420px}
+
+    .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:12px}
+    @media (max-width: 960px){ .kpis{grid-template-columns:repeat(2,1fr)} }
+    .kpi{padding:14px;border-radius:14px;border:1px solid var(--line);background:#fff}
+    .kpi .label{font-size:12px;color:#64748b}
+    .kpi .value{font-size:22px;font-weight:800;margin-top:6px}
+
+    .hr{height:1px;background:linear-gradient(90deg,transparent,#ffffff33,transparent);margin:8px 0 2px}
+
+    .empty{padding:16px;border:1px dashed #94a3b8;border-radius:14px;color:#cbd5e1}
+  </style>
 </head>
-
 <body>
-<div class="container">
-<h1>📊 Media Club Election Results</h1>
+  <div class="container">
+    <h1>📊 Media Club Election Results (Admin)</h1>
+    <div class="subtitle">All clubs & roles • Leaderboards, charts, and KPIs • One‑click Excel export</div>
 
-<button id="btnExport" class="brand">⬇️ Export Excel</button>
-<button id="btnReset" class="danger">Reset Votes</button>
+    <div class="topbar">
+      <div class="controls">
+        <button id="btnExport" class="brand">⬇️ Export Excel (.xlsx)</button>
+        <button id="btnReset" class="danger">🔄 Reset All Votes</button>
+      </div>
+    </div>
 
-<div id="rolesContainer"></div>
-</div>
+    <div id="rolesContainer"></div>
+  </div>
 
-<script>
-/************ ADMIN LOGIN ************/
-const pwd = prompt("Admin Password");
-if(pwd!=="123"){ alert("Wrong Password"); location.href="index.html"; }
+  <script>
+    /************************
+     * Utilities
+     ************************/
+    const $ = s=>document.querySelector(s);
+    const chartsByRole = new Map(); // roleKey -> {pie,bar}
 
-/************ READ VOTES ************/
-function readVotes(){
-  const log = JSON.parse(localStorage.getItem("mc_votes_log")||"[]");
-  const map = {};
-  log.forEach(v=>{
-    const key = `${v.club||"GLOBAL"}:${v.role||"PRESIDENT"}`;
-    map[key] = map[key] || {};
-    map[key][v.candidate] = (map[key][v.candidate]||0)+1;
-  });
-  return map;
-}
+    const CLUB_ALIASES = {
+      'AUDIO/VISUAL':'AUDIOVISUAL','AUDIO VISUAL':'AUDIOVISUAL','AUDIOVISUAL':'AUDIOVISUAL',
+      'DIGITAL LITERACY':'DIGITALLITERACY','DIGITAL-LITERACY':'DIGITALLITERACY','DIGITALLITERACY':'DIGITALLITERACY',
+      'PHOTOGRAPHY':'PHOTOGRAPHY','GAMIFICATION':'GAMIFICATION','GLOBAL':'GLOBAL'
+    };
+    const ROLE_ALIASES = {
+      'PRESIDENT':'PRESIDENT','VICE PRESIDENT':'VICEPRESIDENT','VICEPRESIDENT':'VICEPRESIDENT','SECRETARY':'SECRETARY'
+    };
+    const prettyClub = {
+      AUDIOVISUAL:'Audio/Visual', DIGITALLITERACY:'Digital Literacy', PHOTOGRAPHY:'Photography', GAMIFICATION:'Gamification', GLOBAL:'Global'
+    };
+    const prettyRole = { VICEPRESIDENT:'Vice President', SECRETARY:'Secretary', PRESIDENT:'President' };
 
-/************ RENDER ************/
-function render(){
-  const data = readVotes();
-  const container = document.getElementById("rolesContainer");
-  container.innerHTML = "";
+    function normalizeClub(s=''){
+      const x=(s||'').toString().trim().toUpperCase();
+      return CLUB_ALIASES[x] || CLUB_ALIASES[x.replace(/[ _]/g,' ')] || x.replace(/[^A-Z]/g,'');
+    }
+    function normalizeRoleWord(s=''){
+      const x=(s||'').toString().trim().toUpperCase();
+      return ROLE_ALIASES[x] || ROLE_ALIASES[x.replace(/\s+/g,' ')] || x.replace(/[^A-Z]/g,'');
+    }
+    function normalizeRoleKey(v){
+      // Accept explicit key if present
+      if(v.key){
+        const raw = v.key.toString().toUpperCase();
+        if(raw.includes('PRESIDENT') && !raw.includes('VICE')) return 'GLOBAL:PRESIDENT';
+        if(raw.includes(':')){
+          const [c,r] = raw.split(':');
+          return `${normalizeClub(c)}:${normalizeRoleWord(r)}`;
+        }
+      }
+      const role = normalizeRoleWord(v.role||v.position||'');
+      const club = normalizeClub(v.club||'');
+      if(role==='PRESIDENT') return 'GLOBAL:PRESIDENT';
+      if((role==='VICEPRESIDENT'||role==='SECRETARY') && club) return `${club}:${role}`;
+      return 'GLOBAL:PRESIDENT';
+    }
 
-  Object.keys(data).forEach(role=>{
-    const card = document.createElement("div");
-    card.className="card";
+    function roleTitle(roleKey){
+      if(roleKey==='GLOBAL:PRESIDENT') return 'Global — President';
+      const [c,r]=roleKey.split(':');
+      return `${prettyClub[c]||c} — ${prettyRole[r]||r}`;
+    }
 
-    let rows = Object.entries(data[role]).sort((a,b)=>b[1]-a[1]);
-    let total = rows.reduce((s,[,c])=>s+c,0);
+    /************************
+     * Data ingestion (auto‑detect storage)
+     ************************/
+    function readRoleTallies(){
+      const map = new Map(); // roleKey -> Map<candidate,count>
 
-    card.innerHTML = `<h3>${role}</h3>
-      <table>
-        <tr><th>#</th><th>Candidate</th><th>Votes</th><th>%</th></tr>
-        ${rows.map(([n,c],i)=>`
-          <tr>
-            <td>${i+1}</td>
-            <td>${n}${i===0?'<span class="winner">Winner</span>':''}</td>
-            <td>${c}</td>
-            <td>${((c/total)*100).toFixed(1)}%</td>
-          </tr>`).join("")}
-      </table>`;
-    container.appendChild(card);
-  });
-}
-render();
+      // A) Aggregated structure in localStorage['votes']
+      const agg = safeJSON(localStorage.getItem('votes'));
+      if(agg && typeof agg==='object' && !Array.isArray(agg)){
+        for(const key of Object.keys(agg)){
+          const rk = key.toUpperCase();
+          const m = map.get(rk) || new Map();
+          for(const row of (agg[key]||[])){
+            const name = row.candidate || row.name || 'Unknown';
+            const cnt = Number(row.votes ?? row.count ?? 0) || 0;
+            m.set(name, (m.get(name)||0)+cnt);
+          }
+          if(m.size) map.set(rk, m);
+        }
+      }
 
-/************ EXCEL EXPORT (FORCED) ************/
-async function exportExcel(){
-  const wb = new ExcelJS.Workbook();
-  wb.creator="Media Club";
+      // B) Raw ballots in localStorage['mc_votes_log'] (array)
+      const ballots = safeJSON(localStorage.getItem('mc_votes_log')) || [];
+      if(Array.isArray(ballots) && ballots.length){
+        for(const v of ballots){
+          if(!v || !v.candidate) continue;
+          const rk = normalizeRoleKey(v);
+          const m = map.get(rk) || new Map();
+          m.set(v.candidate, (m.get(v.candidate)||0)+1);
+          map.set(rk, m);
+        }
+      }
 
-  const votes = JSON.parse(localStorage.getItem("mc_votes_log")||"[]");
-  const roles = readVotes();
+      return map; // Map<roleKey, Map<candidate,count>>
+    }
 
-  Object.keys(roles).forEach(role=>{
-    const ws = wb.addWorksheet(role.substring(0,31));
-    ws.addRow(["Rank","Candidate","Votes"]);
+    function safeJSON(s){ try{ return s?JSON.parse(s):null }catch{ return null } }
 
-    Object.entries(roles[role])
-      .sort((a,b)=>b[1]-a[1])
-      .forEach(([n,c],i)=>ws.addRow([i+1,n,c]));
-  });
+    /************************
+     * Rendering
+     ************************/
+    function pct(n){ return (isFinite(n)? (n*100).toFixed(1): '0.0')+'%'; }
 
-  const raw = wb.addWorksheet("Raw Votes");
-  raw.addRow(["Name","Class","Section","House","Club","Role","Candidate"]);
-  votes.forEach(v=>{
-    raw.addRow([v.name,v.class,v.section,v.house,v.club,v.role,v.candidate]);
-  });
+    function renderRoleBlock(roleKey, candMap){
+      const total = [...candMap.values()].reduce((a,b)=>a+b,0);
+      const rows = [...candMap.entries()].sort((a,b)=>b[1]-a[1]);
 
-  const buffer = await wb.xlsx.writeBuffer();
-  const blob = new Blob([buffer],{
-    type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-  });
+      const block = document.createElement('div'); block.className='role-block';
+      const head = document.createElement('div'); head.className='role-header';
+      const title = document.createElement('div'); title.className='role-title'; title.textContent = `${roleTitle(roleKey)} · ${roleKey}`; head.appendChild(title);
+      block.appendChild(head);
 
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = "MediaClub_Election_Results.xlsx";
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(a.href);
-}
+      const grid = document.createElement('div'); grid.className='role-grid';
 
-/************ EVENTS ************/
-document.getElementById("btnExport").onclick = exportExcel;
-document.getElementById("btnReset").onclick = ()=>{
-  localStorage.removeItem("mc_votes_log");
-  alert("Votes Reset");
-  render();
-};
-</script>
+      // Leaderboard
+      const left = document.createElement('div'); left.className='card panel';
+      const hL = document.createElement('h3'); hL.textContent='Leaderboard (Vote Count)'; left.appendChild(hL);
+      const wrap = document.createElement('div'); wrap.className='tableWrap';
+      const table = document.createElement('table');
+      table.innerHTML = '<thead><tr><th>#</th><th>Candidate</th><th>Votes</th><th>% Share</th></tr></thead><tbody></tbody>';
+      const tbody = table.querySelector('tbody');
+      rows.forEach(([name,cnt],i)=>{
+        const tr=document.createElement('tr');
+        tr.innerHTML = `<td>${i+1}</td><td>${name}${i===0?'<span class="winner">Winner</span>':''}</td><td>${cnt}</td><td>${pct(total?cnt/total:0)}</td>`;
+        tbody.appendChild(tr);
+      });
+      wrap.appendChild(table); left.appendChild(wrap);
+
+      // Charts
+      const right = document.createElement('div');
+      const charts = document.createElement('div'); charts.className='charts';
+      const pieCard = document.createElement('div'); pieCard.className='card panel';
+      const barCard = document.createElement('div'); barCard.className='card panel';
+      const pieH = document.createElement('h3'); pieH.textContent='Pie — Vote Share';
+      const barH = document.createElement('h3'); barH.textContent='Bar — Vote Counts';
+      const pieCanvas = document.createElement('canvas'); const barCanvas = document.createElement('canvas');
+      pieCard.append(pieH,pieCanvas); barCard.append(barH,barCanvas);
+      charts.append(pieCard,barCard); right.appendChild(charts);
+
+      grid.append(left,right); block.appendChild(grid);
+
+      // KPIs
+      const kpis = document.createElement('div'); kpis.className='kpis';
+      const leadPct = rows.length? rows[0][1]/(total||1) : 0;
+      kpis.innerHTML = `
+        <div class='kpi'><div class='label'>Total Votes</div><div class='value'>${total}</div></div>
+        <div class='kpi'><div class='label'>% Leading</div><div class='value'>${pct(leadPct)}</div></div>
+        <div class='kpi'><div class='label'># Candidates</div><div class='value'>${candMap.size}</div></div>
+        <div class='kpi'><div class='label'>Role Key</div><div class='value'>${roleKey}</div></div>`;
+      block.appendChild(kpis);
+
+      // Charts instances
+      if(chartsByRole.has(roleKey)){ const old=chartsByRole.get(roleKey); old.pie?.destroy(); old.bar?.destroy(); }
+      const labels = rows.map(([n])=>n); const data = rows.map(([,c])=>c);
+      const pie = new Chart(pieCanvas,{ type:'pie', data:{ labels, datasets:[{ data }] }, options:{responsive:true,plugins:{legend:{position:'bottom'}}} });
+      const bar = new Chart(barCanvas,{ type:'bar', data:{ labels, datasets:[{ label:'Votes', data }] }, options:{responsive:true,scales:{y:{beginAtZero:true,ticks:{precision:0}}}} });
+      chartsByRole.set(roleKey,{pie,bar});
+
+      return block;
+    }
+
+    function refresh(){
+      const tallies = readRoleTallies();
+      const keys = [...tallies.keys()].sort((a,b)=>{ // Global President first
+        if(a==='GLOBAL:PRESIDENT') return -1; if(b==='GLOBAL:PRESIDENT') return 1;
+        const [ac,ar]=a.split(':'),[bc,br]=b.split(':');
+        const ro=(r)=> r==='VICEPRESIDENT'?0: (r==='SECRETARY'?1:2);
+        return ac===bc? ro(ar)-ro(br) : ac.localeCompare(bc);
+      });
+
+      const container = $('#rolesContainer'); container.innerHTML='';
+      if(!keys.length){
+        const empty=document.createElement('div'); empty.className='empty';
+        empty.textContent='No votes found yet. Once students vote, each role\'s results will appear here.';
+        container.appendChild(empty); return;
+      }
+      keys.forEach(rk=> container.appendChild( renderRoleBlock(rk, tallies.get(rk)) ));
+    }
+
+    /************************
+     * Excel Export
+     ************************/
+    async function exportExcel(){
+      const tallies = readRoleTallies();
+      const keys = [...tallies.keys()];
+      const wb = new ExcelJS.Workbook();
+      wb.creator='Media Club Elections'; wb.created=new Date();
+
+      for(const rk of keys){
+        const ws = wb.addWorksheet((roleTitle(rk)).slice(0,31));
+        const rows = [...tallies.get(rk).entries()].sort((a,b)=>b[1]-a[1]);
+        const total = rows.reduce((s,[,c])=>s+c,0);
+
+        ws.columns=[{header:'Rank',key:'rank',width:8},{header:'Candidate',key:'cand',width:28},{header:'Votes',key:'cnt',width:12},{header:'% Share',key:'pct',width:12}];
+        rows.forEach(([cand,cnt],i)=> ws.addRow({rank:i+1,cand, cnt:cnt, pct: total?cnt/total:0}));
+        ws.getRow(1).font={bold:true};
+        for(let r=2;r<=ws.rowCount;r++) ws.getCell(r,4).numFmt='0.0%';
+
+        ws.addRow([]);
+        const metaStart = ws.rowCount+1;
+        ws.addRow(['Role Key', rk]);
+        ws.addRow(['Total Votes', total]);
+        ws.addRow(['% Leading', total? rows[0][1]/total : 0]);
+        ws.addRow(['# Candidates', rows.length]);
+        ws.getCell(metaStart+2,2).numFmt='0.0%';
+
+        // Embed chart images from canvas if present
+        const ch = chartsByRole.get(rk);
+        if(ch?.pie?.canvas){
+          const img = wb.addImage({ base64: ch.pie.canvas.toDataURL('image/png').split(',')[1], extension:'png' });
+          ws.addImage(img,{ tl:{ col:6, row:1 }, ext:{ width:420, height:280 } });
+        }
+        if(ch?.bar?.canvas){
+          const img2 = wb.addImage({ base64: ch.bar.canvas.toDataURL('image/png').split(',')[1], extension:'png' });
+          ws.addImage(img2,{ tl:{ col:6, row:18 }, ext:{ width:420, height:280 } });
+        }
+      }
+
+      // Summary sheet
+      const wsS=wb.addWorksheet('Summary');
+      wsS.addRow(['Media Club Elections — Admin Export']); wsS.getRow(1).font={bold:true,size:14};
+      wsS.addRow(['Exported', new Date().toLocaleString()]); wsS.addRow(['# Roles', keys.length]);
+
+      const buf = await wb.xlsx.writeBuffer();
+      saveAs(new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}), `MediaClub_Results_${new Date().toISOString().slice(0,10)}.xlsx`);
+    }
+
+    /************************
+     * Boot
+     ************************/
+    function boot(){
+      const pwd = prompt('Enter admin password:');
+      if(pwd!=='123'){ alert('❌ Incorrect password'); location.href='./index.html'; return; }
+      refresh();
+      document.getElementById('btnExport').onclick=exportExcel;
+      document.getElementById('btnReset').onclick=()=>{ localStorage.removeItem('mc_votes_log'); localStorage.removeItem('votes'); refresh(); };
+    }
+    document.addEventListener('DOMContentLoaded', boot);
+  </script>
 </body>
 </html>
