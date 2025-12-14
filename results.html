@@ -1,56 +1,63 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <title>Media Club Election Results — Admin</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta charset="utf-8">
+<title>Media Club Election Results (Admin)</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
 
-  <!-- Fonts -->
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet" />
+<!-- Fonts -->
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
 
-  <!-- Chart.js -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.6/dist/chart.umd.min.js"></script>
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.6/dist/chart.umd.min.js"></script>
 
-  <!-- ExcelJS + FileSaver -->
-  <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
+<!-- Excel -->
+<script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
 
-  <style>
-    body{
-      margin:0;
-      font-family:Inter,sans-serif;
-      background:#0b1220;
-      color:#e5e7eb;
-    }
-    .container{max-width:1200px;margin:auto;padding:20px}
-    h1{font-weight:800}
-    .controls{margin:12px 0;display:flex;gap:10px}
-    button{
-      padding:10px 14px;
-      border-radius:10px;
-      border:none;
-      font-weight:700;
-      cursor:pointer;
-    }
-    .brand{background:#4f46e5;color:#fff}
-    .danger{background:#b91c1c;color:#fff}
-    .card{background:#fff;color:#000;border-radius:12px;padding:14px;margin-top:14px}
-    table{width:100%;border-collapse:collapse}
-    th,td{padding:8px;border-bottom:1px solid #e5e7eb}
-    th{background:#f1f5f9}
-    .winner{
-      background:#d1fae5;
-      color:#065f46;
-      padding:2px 6px;
-      border-radius:999px;
-      font-size:11px;
-      margin-left:6px;
-      font-weight:800;
-    }
-    canvas{max-height:320px}
-  </style>
+<!-- PowerPoint -->
+<script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"></script>
+
+<style>
+body{
+  margin:0;
+  font-family:Inter,sans-serif;
+  background:#0b1220;
+  color:#e5e7eb;
+}
+.container{max-width:1200px;margin:auto;padding:20px}
+h1{font-weight:800}
+.controls{display:flex;gap:10px;margin:14px 0}
+button{
+  padding:10px 14px;
+  border-radius:10px;
+  border:none;
+  font-weight:700;
+  cursor:pointer;
+}
+.brand{background:#4f46e5;color:#fff}
+.danger{background:#b91c1c;color:#fff}
+.card{
+  background:#fff;
+  color:#000;
+  border-radius:16px;
+  padding:16px;
+  margin-top:20px;
+}
+table{width:100%;border-collapse:collapse}
+th,td{padding:10px;border-bottom:1px solid #e5e7eb}
+th{background:#f1f5f9}
+.winner{
+  background:#d1fae5;
+  color:#065f46;
+  padding:2px 8px;
+  border-radius:999px;
+  font-size:11px;
+  font-weight:800;
+  margin-left:6px;
+}
+canvas{max-height:300px;margin-top:14px}
+</style>
 </head>
 
 <body>
@@ -58,29 +65,27 @@
   <h1>📊 Media Club Election Results (Admin)</h1>
 
   <div class="controls">
-    <button id="btnExport" class="brand">⬇️ Export Excel (.xlsx)</button>
+    <button id="btnExcel" class="brand">⬇ Export Excel (.xlsx)</button>
+    <button id="btnPPT" class="brand">📽 Export PowerPoint (.pptx)</button>
     <button id="btnReset" class="danger">🔄 Reset All Votes</button>
   </div>
 
-  <div id="rolesContainer"></div>
+  <div id="roles"></div>
 </div>
 
 <script>
-/* ==========================
-   Utilities & Storage
-========================== */
-const chartsByRole = new Map();
-const $ = s => document.querySelector(s);
+/* ===============================
+   DATA
+================================ */
+const charts = new Map();
 
-function safeJSON(v){
-  try { return JSON.parse(v); } catch { return null; }
-}
+function safeJSON(v){ try{return JSON.parse(v)}catch{return null} }
 
-function readRoleTallies(){
+function readVotes(){
   const map = new Map();
+  const votes = safeJSON(localStorage.getItem('mc_votes_log')) || [];
 
-  const ballots = safeJSON(localStorage.getItem('mc_votes_log')) || [];
-  ballots.forEach(v=>{
+  votes.forEach(v=>{
     if(!v?.candidate) return;
     const role = v.role || 'PRESIDENT';
     const m = map.get(role) || new Map();
@@ -91,144 +96,158 @@ function readRoleTallies(){
   return map;
 }
 
-/* ==========================
-   Rendering
-========================== */
+/* ===============================
+   RENDER
+================================ */
 function render(){
-  const data = readRoleTallies();
-  const container = $('#rolesContainer');
-  container.innerHTML = '';
+  const data = readVotes();
+  const root = document.getElementById('roles');
+  root.innerHTML='';
 
   if(!data.size){
-    container.innerHTML = '<div class="card">No votes yet.</div>';
+    root.innerHTML='<div class="card">No votes yet.</div>';
     return;
   }
 
   for(const [role,cands] of data){
-    const rows = [...cands.entries()].sort((a,b)=>b[1]-a[1]);
-    const total = rows.reduce((s,[,v])=>s+v,0);
+    const rows=[...cands.entries()].sort((a,b)=>b[1]-a[1]);
+    const total=rows.reduce((s,[,v])=>s+v,0);
 
-    const card = document.createElement('div');
+    const card=document.createElement('div');
     card.className='card';
+    card.innerHTML=`<h3>${role}</h3>`;
 
-    card.innerHTML = `<h3>${role}</h3>`;
-
-    const table = document.createElement('table');
-    table.innerHTML = `
-      <thead>
-        <tr><th>#</th><th>Candidate</th><th>Votes</th><th>%</th></tr>
-      </thead>
-      <tbody></tbody>`;
-    const tb = table.querySelector('tbody');
+    const table=document.createElement('table');
+    table.innerHTML='<thead><tr><th>#</th><th>Candidate</th><th>Votes</th><th>%</th></tr></thead><tbody></tbody>';
+    const tb=table.querySelector('tbody');
 
     rows.forEach(([n,v],i)=>{
-      tb.innerHTML += `
-        <tr>
-          <td>${i+1}</td>
-          <td>${n}${i===0?'<span class="winner">Winner</span>':''}</td>
-          <td>${v}</td>
-          <td>${((v/total)*100).toFixed(1)}%</td>
-        </tr>`;
+      tb.innerHTML+=`
+      <tr>
+        <td>${i+1}</td>
+        <td>${n}${i===0?'<span class="winner">Winner</span>':''}</td>
+        <td>${v}</td>
+        <td>${((v/total)*100).toFixed(1)}%</td>
+      </tr>`;
     });
 
     card.appendChild(table);
 
-    const canvas = document.createElement('canvas');
+    const canvas=document.createElement('canvas');
     card.appendChild(canvas);
+    root.appendChild(card);
 
-    container.appendChild(card);
-
-    const chart = new Chart(canvas,{
+    const chart=new Chart(canvas,{
       type:'bar',
-      data:{
-        labels:rows.map(r=>r[0]),
-        datasets:[{label:'Votes',data:rows.map(r=>r[1])}]
-      },
+      data:{labels:rows.map(r=>r[0]),datasets:[{label:'Votes',data:rows.map(r=>r[1])}]},
       options:{responsive:true,scales:{y:{beginAtZero:true}}}
     });
 
-    chartsByRole.set(role,{chart,canvas});
+    charts.set(role,{canvas,rows,total});
   }
 }
 
-/* ==========================
-   Excel Export (WORKING)
-========================== */
+/* ===============================
+   EXCEL EXPORT
+================================ */
 async function exportExcel(){
-  if(typeof ExcelJS==='undefined' || typeof saveAs==='undefined'){
-    alert('Excel libraries failed to load');
-    return;
-  }
+  const data=readVotes();
+  if(!data.size) return alert('No data');
 
-  const data = readRoleTallies();
-  if(!data.size){
-    alert('No data to export');
-    return;
-  }
-
-  const wb = new ExcelJS.Workbook();
-  wb.creator = 'Media Club';
+  const wb=new ExcelJS.Workbook();
+  wb.creator='Media Club';
 
   for(const [role,cands] of data){
-    const ws = wb.addWorksheet(role.slice(0,31));
-    const rows = [...cands.entries()].sort((a,b)=>b[1]-a[1]);
-    const total = rows.reduce((s,[,v])=>s+v,0);
+    const ws=wb.addWorksheet(role.slice(0,31));
+    const rows=[...cands.entries()].sort((a,b)=>b[1]-a[1]);
+    const total=rows.reduce((s,[,v])=>s+v,0);
 
-    ws.columns = [
-      {header:'Rank',width:8},
+    ws.columns=[
+      {header:'#',width:6},
       {header:'Candidate',width:26},
       {header:'Votes',width:10},
-      {header:'% Share',width:12}
+      {header:'%',width:12}
     ];
-
-    rows.forEach(([n,v],i)=>{
-      ws.addRow([i+1,n,v,v/total]);
-    });
-
-    ws.getRow(1).font={bold:true};
+    rows.forEach(([n,v],i)=>ws.addRow([i+1,n,v,v/total]));
     ws.getColumn(4).numFmt='0.0%';
+    ws.getRow(1).font={bold:true};
 
-    const ch = chartsByRole.get(role);
+    const ch=charts.get(role);
     if(ch){
-      const img = wb.addImage({
-        base64: ch.canvas.toDataURL().split(',')[1],
-        extension:'png'
-      });
-      ws.addImage(img,{tl:{col:5,row:1},ext:{width:400,height:260}});
+      const img=wb.addImage({base64:ch.canvas.toDataURL().split(',')[1],extension:'png'});
+      ws.addImage(img,{tl:{col:5,row:1},ext:{width:400,height:250}});
     }
   }
 
-  const buf = await wb.xlsx.writeBuffer();
-  saveAs(
-    new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}),
-    `MediaClub_Results_${new Date().toISOString().slice(0,10)}.xlsx`
-  );
+  const buf=await wb.xlsx.writeBuffer();
+  saveAs(new Blob([buf]),'MediaClubResults.xlsx');
 }
 
-/* ==========================
-   Boot (FIXED)
-========================== */
+/* ===============================
+   POWERPOINT EXPORT (SLIDES)
+================================ */
+function exportPPT(){
+  const data=readVotes();
+  if(!data.size) return alert('No data');
+
+  const ppt=new PptxGenJS();
+
+  /* Slide 1 */
+  const s1=ppt.addSlide();
+  s1.background={fill:'0B1220'};
+  s1.addText('Media Club Election Results',{x:1,y:1.6,w:8,fontSize:32,bold:true,color:'FFFFFF'});
+  s1.addText(new Date().toLocaleString(),{x:1,y:2.6,w:8,fontSize:14,color:'CBD5E1'});
+
+  /* Slide 2+ */
+  for(const [role,cands] of data){
+    const rows=[...cands.entries()].sort((a,b)=>b[1]-a[1]);
+    const total=rows.reduce((s,[,v])=>s+v,0);
+
+    const slide=ppt.addSlide();
+    slide.addText(role,{x:0.5,y:0.3,w:9,fontSize:22,bold:true});
+
+    slide.addTable(
+      [
+        ['#','Candidate','Votes','%'],
+        ...rows.map(([n,v],i)=>[i+1,n+(i===0?' (Winner)':''),v,((v/total)*100).toFixed(1)+'%'])
+      ],
+      {x:0.4,y:1.1,w:4.8,headerRow:true,fontSize:12}
+    );
+
+    slide.addChart(ppt.ChartType.pie,[{
+      labels:rows.map(r=>r[0]),
+      values:rows.map(r=>r[1])
+    }],{x:5.4,y:1,w:4,h:3});
+
+    slide.addChart(ppt.ChartType.bar,[{
+      labels:rows.map(r=>r[0]),
+      values:rows.map(r=>r[1])
+    }],{x:5.4,y:4.1,w:4,h:2.4});
+  }
+
+  ppt.writeFile('MediaClubResults.pptx');
+}
+
+/* ===============================
+   BOOT
+================================ */
 function boot(){
-  // Attach handlers FIRST
-  $('#btnExport').addEventListener('click', exportExcel);
-  $('#btnReset').addEventListener('click', ()=>{
+  document.getElementById('btnExcel').onclick=exportExcel;
+  document.getElementById('btnPPT').onclick=exportPPT;
+  document.getElementById('btnReset').onclick=()=>{
     localStorage.removeItem('mc_votes_log');
     render();
-  });
+  };
 
-  // Password
-  const pwd = prompt('Enter admin password');
+  const pwd=prompt('Enter admin password');
   if(pwd!=='123'){
     alert('Wrong password');
     location.href='index.html';
     return;
   }
-
   render();
 }
-
-document.addEventListener('DOMContentLoaded', boot);
+document.addEventListener('DOMContentLoaded',boot);
 </script>
 </body>
 </html>
-
